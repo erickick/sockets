@@ -29,8 +29,13 @@ int main(int argc, char *argv[])
     int server_socket;
     int client_socket;
     socklen_t addrlen = sizeof(struct sockaddr_in);
+    const char * path = {"/sys/class/gpio/gpioXX/value"};
     int port = 8080;
+    int gpio_led = 50;
+    int fd;
+    char value;
     char buffer[1024] = { 0 };
+    char * p_buff;
     struct sockaddr_in server_address;
 
     puts("Iniciando Servidor...");
@@ -38,6 +43,9 @@ int main(int argc, char *argv[])
     //Configurar porta
     if (argc > 1)
 	port = (int) strtol(argv[1], NULL, 10);
+    //Configura porta GPIO
+    if (argc > 2)
+        gpio_led = (int) strtol(argv[2], NULL, 10);
     //IPv4 - TCP
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (!server_socket)
@@ -63,14 +71,34 @@ int main(int argc, char *argv[])
 	terminate("Error ao conectar o cliente", server_socket);
     printf("Cliente %s esta connectado\n",
 	   inet_ntoa(server_address.sin_addr));
-    write(client_socket, "Bem-vindo a BBB server", 22);
+    if ( write(client_socket, "Bem-vindo a BBB server", 22) == -1 )
+    	perror("Erro ao enviar mensagem para o client");
     //troca mensagens
     do {
 	bytes = recv(client_socket, buffer, sizeof(buffer), 0);
 	if (bytes) {
 	    //busca por comando de led
-	    if (strstr(buffer, "led") == 0) {
-		//@TODO - Pisca led
+	    p_buff = strstr(buffer, "led");
+	    if ( p_buff != (char *) NULL ) {
+	    	//captura 0 ou 1
+	    	value = buffer[4];
+	    	//reutiliza buffer para nome do GPIO
+	    	memset(buffer, 0, sizeof(buffer));
+	    	sprintf(buffer,"/sys/class/gpio/gpio%d/value", gpio);
+	    	//Abre comunicação com gpio
+	    	fd = open(buffer, O_WRONL|O_SYNC);
+		if ( fd ) {
+		    //escreve valor lógico
+	            if ( write(fd, &(value), 1) != -1 ) {
+	            	printf("GPIO[%d]: %c\n", gpio, value);
+	            	write(client_socket, "ok", 2);
+	            } else {
+	            	perror("Erro ao escrever na GPIO");
+	            	write(client_socket, "erro", 2);
+	            }
+	            close(fd);
+		} else
+		    perror("Erro ao abrir GPIO")
 	    }
 	}
     } while (bytes);
