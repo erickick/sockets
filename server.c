@@ -57,12 +57,15 @@ int main(int argc, char *argv[])
     if ( !client_socket )
         terminate("Error ao conectar o cliente", server_socket);
     printf("Cliente %s esta connectado\n", inet_ntoa(server_address.sin_addr));
+    write(client_socket, "Bem-vindo a BBB server", 22);
     //troca mensagens
     do {
 	bytes = recv(client_socket, buffer, sizeof(buffer), 0);
-	printf("Recebido %d bytes\n", bytes);
-	{
-            //Realiza algo
+	if ( bytes ) {
+            //busca por comando de led
+	    if ( strstr(buffer, "led") == 0 ) {
+                //@TODO - Pisca led
+            }
 	}	
     } while ( bytes );
 
