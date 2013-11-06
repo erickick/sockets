@@ -29,13 +29,10 @@ int main(int argc, char *argv[])
     int server_socket;
     int client_socket;
     socklen_t addrlen = sizeof(struct sockaddr_in);
-    const char * path = {"/sys/class/gpio/gpioXX/value"};
     int port = 8080;
     int gpio_led = 50;
     int fd;
-    char value;
     char buffer[1024] = { 0 };
-    char * p_buff;
     struct sockaddr_in server_address;
 
     puts("Iniciando Servidor...");
@@ -64,42 +61,39 @@ int main(int argc, char *argv[])
     if (listen(server_socket, 3) == -1)
 	terminate("Erro ao escutar porta", server_socket);
     //aguarda conexão do cliente
-    client_socket =
-	accept(server_socket, (struct sockaddr *) &(server_address),
+    client_socket =  accept(server_socket, (struct sockaddr *) &(server_address),
 	       &(addrlen));
     if (!client_socket)
 	terminate("Error ao conectar o cliente", server_socket);
     printf("Cliente %s esta connectado\n",
 	   inet_ntoa(server_address.sin_addr));
-    if ( write(client_socket, "Bem-vindo a BBB server", 22) == -1 )
+    if ( send(client_socket, "Bem-vindo a BBB server", 22, 0) == -1 )
     	perror("Erro ao enviar mensagem para o client");
     //troca mensagens
     do {
 	bytes = recv(client_socket, buffer, sizeof(buffer), 0);
 	if (bytes) {
-	    //busca por comando de led
-	    p_buff = strstr(buffer, "led");
-	    if ( p_buff != (char *) NULL ) {
-	    	//captura 0 ou 1
-	    	value = buffer[4];
-	    	//reutiliza buffer para nome do GPIO
-	    	memset(buffer, 0, sizeof(buffer));
-	    	sprintf(buffer,"/sys/class/gpio/gpio%d/value", gpio);
-	    	//Abre comunicação com gpio
-	    	fd = open(buffer, O_WRONL|O_SYNC);
-		if ( fd ) {
-		    //escreve valor lógico
-	            if ( write(fd, &(value), 1) != -1 ) {
-	            	printf("GPIO[%d]: %c\n", gpio, value);
-	            	write(client_socket, "ok", 2);
+	    //busca por comando de led, captura 0 ou 1
+	    value = buffer[0];
+	    //reutiliza buffer para nome do GPIO
+	    memset(buffer, 0, sizeof(buffer));
+	    sprintf(buffer,"/sys/class/gpio/gpio%d/value", gpio);
+	    //Abre comunicação com gpio
+	    fd = open(buffer, O_WRONL|O_SYNC);
+	    if ( fd ) {
+	        //escreve valor lógico
+	        if ( write(fd, buffer, 1) != -1 ) {
+	            printf("GPIO[%d]: %c\n", gpio, buffer[1]);
+	            if ( send(client_socket, "ok", 2, 0) == -1 )
+	                perror("Erro ao enviar pacote para client");
 	            } else {
-	            	perror("Erro ao escrever na GPIO");
-	            	write(client_socket, "erro", 2);
+	                perror("Erro ao escrever na GPIO");
+	            	if ( send(client_socket, "erro", 2, 0) == -1 )
+	            	    perror("Erro ao enviar pacote para client");
 	            }
 	            close(fd);
-		} else
-		    perror("Erro ao abrir GPIO")
-	    }
+	    } else
+	        perror("Erro ao abrir GPIO");
 	}
     } while (bytes);
 
