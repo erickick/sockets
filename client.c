@@ -47,7 +47,10 @@ int main(int argc, char *argv[])
     memset(&(serv_addr), 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    if ( argc < 2 )
+    	serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    else 
+    	serv_addr.sin_addr.s_addr = inet_addr(argv[2]);
     //Conecta ao servidor
     if (connect
 	(client_socket, (struct sockaddr *) &(serv_addr),
@@ -58,7 +61,10 @@ int main(int argc, char *argv[])
 	bytes = read(client_socket, buffer, sizeof(buffer));
 	if (bytes) {
 	    printf("Recebido do servidor: %s\n", buffer);
-	    bytes = write(client_socket, "led", 3);
+	    /* @TODO
+	    * Colocar valor para escrever na gpio
+	    */
+	    bytes = send(client_socket, "1", 1, 0);
 	    memset(buffer, 0, bytes);
 	}
     } while (bytes);
