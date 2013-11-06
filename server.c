@@ -8,7 +8,7 @@
 #include <string.h>
 //----------------------------------------------------------------------
 /*!
-* @brief Finaliza processo por algum erro
+* @brief Finaliza processo por algum erru
 * @param msg Mensagem para ser enviar no stderr
 * @param socket Socket que deve ser fechado
 */
